@@ -1,5 +1,5 @@
 import requests
-from src.util import get_pair_ids, get_coin_name, engine_create, upload_table
+from src.util import get_pair_ids, engine_create, upload_table, get_pair_name
 from sqlalchemy import Float
 
 from websocket import create_connection
@@ -52,6 +52,9 @@ class DataManager:
         # Dispose engine
         conn_engine.dispose()
 
+    def get_coin_name(self, dict_coin, coin_id, coins_data):
+        pass
+
     def update_coin_candle(self, coin_id, date, data_coin, coin_price):
         amt_period = len(self.periods)
         if coin_id in data_coin.keys():
@@ -60,7 +63,7 @@ class DataManager:
             data_coin[coin_id][amt_period + 3] = max([data_coin[coin_id][amt_period + 3], coin_price])
             data_coin[coin_id][amt_period + 4] = coin_price
         else:
-            coin = get_coin_name(self.coin_df, coin_id, self.coins_data)
+            coin = self.get_coin_name(self.coin_df, coin_id, self.coins_data)
             data_coin[coin_id] = [coin_price for _ in range(len(self.periods))]
             data_coin[coin_id].extend([coin, date, coin_price, coin_price, coin_price])
 
@@ -92,3 +95,7 @@ class DataManagerWebSocket(DataManager):
                                         self.data_candle,
                                         result[2][1])
         ws.close()
+
+    def get_coin_name(self, dict_coin, coin_id, coins_data):
+        main_currency = self.environment_variables['main_currency']
+        return coins_data[get_pair_name(dict_coin, coin_id).replace(main_currency+'_', '')]['name']

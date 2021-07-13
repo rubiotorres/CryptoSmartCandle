@@ -10,9 +10,8 @@ def get_pair_ids(df_path='./environment/currencypairids.csv'):
     return list_ids, df_coins
 
 
-def get_coin_name(dict_coin, coin_id, coins_data):
-    return coins_data[dict_coin[dict_coin['Id'] == coin_id]['Currency Pair'].reset_index().iloc[0]['Currency Pair']
-        .replace('BTC_', '')]['name']
+def get_pair_name(dict_coin, coin_id):
+    return dict_coin[dict_coin['Id'] == coin_id].iloc[0]['Currency Pair']
 
 
 def upload_table(engine, data, table, table_types={}, use_index=False):
