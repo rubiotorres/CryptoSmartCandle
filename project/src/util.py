@@ -1,6 +1,5 @@
 import json
 import pandas as pd
-from mysql import connector
 from sqlalchemy import create_engine
 
 
@@ -16,26 +15,10 @@ def get_coin_name(dict_coin, coin_id, coins_data):
         .replace('BTC_', '')]['name']
 
 
-def upload_table(engine, data, table, use_index=False):
+def upload_table(engine, data, table, table_types={}, use_index=False):
     try:
-        data.to_sql(table, con=engine, if_exists="append", index=False)
+        data.to_sql(table, con=engine, if_exists="append", index=use_index, dtype=table_types)
         print("Added to the {}.".format(table))
-    except Exception as e:
-        print("Unexpected error:", e)
-
-
-def createTables(database, table, sql):
-    conn = connector.connect(
-        host=database["host"],
-        port=database["port"],
-        user=database["usr"],
-        password=database["pwd"],
-        database=database["db"],
-    )
-    sqlcursor = conn.cursor()
-    print("|{}| Create if not exist".format(table))
-    try:
-        sqlcursor.execute(sql)
     except Exception as e:
         print("Unexpected error:", e)
 

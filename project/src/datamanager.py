@@ -1,5 +1,6 @@
 import requests
-from src.util import get_pair_ids, get_coin_name, engine_create, createTables, upload_table
+from src.util import get_pair_ids, get_coin_name, engine_create, upload_table
+from sqlalchemy import Float
 
 from websocket import create_connection
 import pandas as pd
@@ -13,57 +14,55 @@ class DataManager:
         self.environment_variables = environment_variables
         self.data_candle = {}
         self.coin_list, self.coin_df = get_pair_ids()
-        self.coins_data = requests.get("https://poloniex.com/public?command=returnCurrencies").json()
+        self.coins_data = requests.get(environment_variables['coin_info_api']).json()
+        self.periods = environment_variables['periods']
 
-        schedule.every(1).minutes.do(lambda: self.update_per_period(1))
-        schedule.every(5).minutes.do(lambda: self.update_per_period(5))
-        schedule.every(10).minutes.do(lambda: self.update_per_period(10))
+        schedule.every(1).minutes.do(lambda: self.update_per_period("1"))
+        schedule.every(5).minutes.do(lambda: self.update_per_period("5"))
+        schedule.every(10).minutes.do(lambda: self.update_per_period("10"))
 
     def update_per_period(self, period):
-        dict_result = {
-            "Moeda": [],
-            "Periodicidade": [],
-            "Datetime": [],
-            "Open": [],
-            "Low": [],
-            "High": [],
-            "Close": []
-        }
-        if period == 1:
-            position = 0
-        elif period == 5:
-            position = 1
-        elif period == 10:
-            position = 2
+        dict_result = {}
+        amt_period = len(self.periods)
+
+        position = self.periods[period][0]
+        table_name = self.periods[period][1]
         for coin_id in self.data_candle:
-            dict_result['Moeda'].append(self.data_candle[coin_id][3])
-            dict_result['Periodicidade'].append(str(period) + ' min')
-            dict_result['Datetime'].append(self.data_candle[coin_id][4])
-            dict_result['Open'].append(self.data_candle[coin_id][position])
-            dict_result['Low'].append(self.data_candle[coin_id][5])
-            dict_result['High'].append(self.data_candle[coin_id][6])
-            dict_result['Close'].append(self.data_candle[coin_id][7])
+            dict_result.setdefault('Moeda', []).append(self.data_candle[coin_id][amt_period])
+            dict_result.setdefault('Periodicidade', []).append(period + ' min')
+            dict_result.setdefault('Datetime', []).append(self.data_candle[coin_id][amt_period + 1])
+            dict_result.setdefault('Open', []).append(self.data_candle[coin_id][position])
+            dict_result.setdefault('Low', []).append(self.data_candle[coin_id][amt_period + 2])
+            dict_result.setdefault('High', []).append(self.data_candle[coin_id][amt_period + 3])
+            dict_result.setdefault('Close', []).append(self.data_candle[coin_id][amt_period + 4])
+
+            # Update open price
             self.data_candle[coin_id][position] = self.data_candle[coin_id][7]
 
-        #conn_engine = engine_create(self.environment_variables['database_destiny'])
+        conn_engine = engine_create(self.environment_variables['database_destiny'])
 
-        df_result = pd.DataFrame(dict_result)
         # Populate table
-        #upload_table(conn_engine, df_result, self.environment_variables['table_destiny'], False)
+        upload_table(engine=conn_engine,
+                     data=pd.DataFrame(dict_result),
+                     table=table_name,
+                     table_types={},
+                     use_index=False
+                     )
 
         # Dispose engine
-        # conn_engine.dispose()
-        df_result.to_csv('my_csv.csv', mode='a', header=False)
+        conn_engine.dispose()
 
     def update_coin_candle(self, coin_id, date, data_coin, coin_price):
+        amt_period = len(self.periods)
         if coin_id in data_coin.keys():
-            data_coin[coin_id][4] = date
-            data_coin[coin_id][5] = min([data_coin[coin_id][5], coin_price])
-            data_coin[coin_id][6] = max([data_coin[coin_id][6], coin_price])
-            data_coin[coin_id][7] = coin_price
+            data_coin[coin_id][amt_period + 1] = date
+            data_coin[coin_id][amt_period + 2] = min([data_coin[coin_id][amt_period + 2], coin_price])
+            data_coin[coin_id][amt_period + 3] = max([data_coin[coin_id][amt_period + 3], coin_price])
+            data_coin[coin_id][amt_period + 4] = coin_price
         else:
             coin = get_coin_name(self.coin_df, coin_id, self.coins_data)
-            data_coin[coin_id] = [coin_price, coin_price, coin_price, coin, date, coin_price, coin_price, coin_price]
+            data_coin[coin_id] = [coin_price for _ in range(len(self.periods))]
+            data_coin[coin_id].extend([coin, date, coin_price, coin_price, coin_price])
 
     def fetch_new_data(self):
         pass
