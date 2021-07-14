@@ -1,6 +1,5 @@
 import requests
 from src.util import get_pair_ids, engine_create, upload_table, get_pair_name
-from sqlalchemy import Float
 
 from websocket import create_connection
 import pandas as pd
@@ -9,12 +8,14 @@ import json
 import schedule
 
 
+# Abstract class
 class DataManager:
+    # Class that get data and store
     def __init__(self, environment_variables):
         self.environment_variables = environment_variables
-        self.data_candle = {}
-        self.coin_list, self.coin_df = get_pair_ids()
-        self.coins_data = requests.get(environment_variables['coin_info_api']).json()
+        self.data_candle = {}  # Latest data by currency and opening data
+        self.currency_list, self.currency_df = get_pair_ids(environment_variables['CurrencyID_info_path'])
+        self.currencies_data = requests.get(environment_variables['currency_info_api']).json()
         self.periods = environment_variables['periods']
 
         schedule.every(1).minutes.do(lambda: self.update_per_period("1"))
@@ -27,17 +28,17 @@ class DataManager:
 
         position = self.periods[period][0]
         table_name = self.periods[period][1]
-        for coin_id in self.data_candle:
-            dict_result.setdefault('Moeda', []).append(self.data_candle[coin_id][amt_period])
+        for currency_id in self.data_candle:
+            dict_result.setdefault('Moeda', []).append(self.data_candle[currency_id][amt_period])
             dict_result.setdefault('Periodicidade', []).append(period + ' min')
-            dict_result.setdefault('Datetime', []).append(self.data_candle[coin_id][amt_period + 1])
-            dict_result.setdefault('Open', []).append(self.data_candle[coin_id][position])
-            dict_result.setdefault('Low', []).append(self.data_candle[coin_id][amt_period + 2])
-            dict_result.setdefault('High', []).append(self.data_candle[coin_id][amt_period + 3])
-            dict_result.setdefault('Close', []).append(self.data_candle[coin_id][amt_period + 4])
+            dict_result.setdefault('Datetime', []).append(self.data_candle[currency_id][amt_period + 1])
+            dict_result.setdefault('Open', []).append(self.data_candle[currency_id][position])
+            dict_result.setdefault('Low', []).append(self.data_candle[currency_id][amt_period + 2])
+            dict_result.setdefault('High', []).append(self.data_candle[currency_id][amt_period + 3])
+            dict_result.setdefault('Close', []).append(self.data_candle[currency_id][amt_period + 4])
 
             # Update open price
-            self.data_candle[coin_id][position] = self.data_candle[coin_id][7]
+            self.data_candle[currency_id][position] = self.data_candle[currency_id][7]
 
         conn_engine = engine_create(self.environment_variables['database_destiny'])
 
@@ -52,20 +53,23 @@ class DataManager:
         # Dispose engine
         conn_engine.dispose()
 
-    def get_coin_name(self, dict_coin, coin_id, coins_data):
-        pass
+    def get_currency_name(self, dict_currency, currency_id, currencies_data):
+        main_currency = self.environment_variables['main_currency']
+        return currencies_data[get_pair_name(dict_currency, currency_id).replace(main_currency + '_', '')]['name']
 
-    def update_coin_candle(self, coin_id, date, data_coin, coin_price):
+    def update_currency_candle(self, currency_id, date, data_currency, currency_price):
         amt_period = len(self.periods)
-        if coin_id in data_coin.keys():
-            data_coin[coin_id][amt_period + 1] = date
-            data_coin[coin_id][amt_period + 2] = min([data_coin[coin_id][amt_period + 2], coin_price])
-            data_coin[coin_id][amt_period + 3] = max([data_coin[coin_id][amt_period + 3], coin_price])
-            data_coin[coin_id][amt_period + 4] = coin_price
+        if currency_id in data_currency.keys():
+            data_currency[currency_id][amt_period + 1] = date
+            data_currency[currency_id][amt_period + 2] = min(
+                [data_currency[currency_id][amt_period + 2], currency_price])
+            data_currency[currency_id][amt_period + 3] = max(
+                [data_currency[currency_id][amt_period + 3], currency_price])
+            data_currency[currency_id][amt_period + 4] = currency_price
         else:
-            coin = self.get_coin_name(self.coin_df, coin_id, self.coins_data)
-            data_coin[coin_id] = [coin_price for _ in range(len(self.periods))]
-            data_coin[coin_id].extend([coin, date, coin_price, coin_price, coin_price])
+            currency = self.get_currency_name(self.currency_df, currency_id, self.currencies_data)
+            data_currency[currency_id] = [currency_price for _ in range(len(self.periods))]
+            data_currency[currency_id].extend([currency, date, currency_price, currency_price, currency_price])
 
     def fetch_new_data(self):
         pass
@@ -74,9 +78,8 @@ class DataManager:
 class DataManagerWebSocket(DataManager):
     def __init__(self, environment_variables):
         super().__init__(environment_variables)
-        url = "wss://api2.poloniex.com"
         route = '{"command": "subscribe", "channel": 1002}'
-        self.web_socket = create_connection(url)
+        self.web_socket = create_connection(environment_variables['web_socket_url'])
         self.web_socket.send(route)
         while 1:
             if len(json.loads(self.web_socket.recv())) > 2:
@@ -87,15 +90,29 @@ class DataManagerWebSocket(DataManager):
             schedule.run_pending()
             result = json.loads(self.web_socket.recv())
 
-            coin_id = result[2][0]
-            # print(self.data_candle)
-            if coin_id in self.coin_list:
-                self.update_coin_candle(coin_id,
-                                        datetime.datetime.now(),
-                                        self.data_candle,
-                                        result[2][1])
+            currency_id = result[2][0]
+
+            if currency_id in self.currency_list:
+                self.update_currency_candle(currency_id,
+                                            datetime.datetime.now(),
+                                            self.data_candle,
+                                            result[2][1])
         ws.close()
 
-    def get_coin_name(self, dict_coin, coin_id, coins_data):
-        main_currency = self.environment_variables['main_currency']
-        return coins_data[get_pair_name(dict_coin, coin_id).replace(main_currency+'_', '')]['name']
+
+class DataManagerApi(DataManager):
+    def __init__(self, environment_variables):
+        super().__init__(environment_variables)
+
+    def fetch_new_data(self):
+        while 1:
+            schedule.run_pending()
+            result = requests.get(self.environment_variables['api_url']).json()
+            for _, value in result.items():
+                currency_id = value['id']
+
+                if currency_id in self.currency_list:
+                    self.update_currency_candle(currency_id,
+                                                datetime.datetime.now(),
+                                                self.data_candle,
+                                                value['last'])
