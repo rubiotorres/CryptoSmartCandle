@@ -32,11 +32,6 @@ def engine_create(database):
     return create_engine(url)
 
 
-def get_environment_variables():
-    try:
-        with open("./environment/env.json") as json_file:
-            return json.load(json_file)
-    except Exception as e:
-        print("Unexpected error:", e)
-        with open("./environment/env.json") as json_file:
-            return json.load(json_file)
+def get_environment_variables(path):
+    with open(path) as json_file:
+        return json.load(json_file)
