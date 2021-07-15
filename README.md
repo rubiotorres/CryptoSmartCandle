@@ -50,6 +50,15 @@ obs: websocket appeared unstable, losing connection a few times running in the d
    # Run the Docker found at the root of the repository:
    $ docker-compose up --build
 
+   # Replace on `env.json` with a valid host and database, if you want run on docker with localhost use `host.docker.internal` as host
+   "database_destiny": {
+    "host": "host.docker.internal",
+    "port": "3306",
+    "usr": "root",
+    "pwd": "root",
+    "db": "crypto_db"
+  },
+
 ```
 At the end you will have a service running in backgroud collecting data and recording it.
 
