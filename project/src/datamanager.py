@@ -1,5 +1,6 @@
 import requests
-from src.util import get_pair_ids, engine_create, upload_table, get_pair_name
+from src.util import get_pair_ids, engine_create, upload_table, get_pair_name, create_log
+from sqlalchemy.types import DateTime
 
 from websocket import create_connection
 import pandas as pd
@@ -46,7 +47,8 @@ class DataManager:
         upload_table(engine=conn_engine,
                      data=pd.DataFrame(dict_result),
                      table=table_name,
-                     table_types={},
+                     log_path=self.environment_variables['log_path'],
+                     table_types={'Datetime': DateTime},
                      use_index=False
                      )
 
@@ -72,7 +74,7 @@ class DataManager:
             data_currency[currency_id].extend([currency, date, currency_price, currency_price, currency_price])
 
     def fetch_new_data(self):
-        pass
+        pass  # This method collects data
 
 
 class DataManagerWebSocket(DataManager):
@@ -90,7 +92,8 @@ class DataManagerWebSocket(DataManager):
             schedule.run_pending()
             result = json.loads(self.web_socket.recv())
             if result[0] == 1010:
-                print('Bad Request')
+                create_log('Bad Request web socket', self.environment_variables['log_path'])
+
                 self.web_socket = create_connection(self.environment_variables['web_socket_url'])
                 self.web_socket.send(self.route)
                 while 1:
@@ -101,7 +104,7 @@ class DataManagerWebSocket(DataManager):
 
                 if currency_id in self.currency_list:
                     self.update_currency_candle(currency_id,
-                                                datetime.datetime.now(),
+                                                datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
                                                 self.data_candle,
                                                 result[2][1])
         ws.close()
@@ -120,6 +123,6 @@ class DataManagerApi(DataManager):
 
                 if currency_id in self.currency_list:
                     self.update_currency_candle(currency_id,
-                                                datetime.datetime.now(),
+                                                datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
                                                 self.data_candle,
                                                 value['last'])

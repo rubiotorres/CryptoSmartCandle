@@ -32,8 +32,8 @@ obs: websocket appeared unstable, losing connection a few times running in the d
 
    1. Put the real or dollar as the default currency.
    2. Be able to exchange the default currency.
-   3. Add more security to database management.
-   4. Generate logs of possible errors.
+   3. Construct a api to stop service or change the model(websocket/api)
+   4. Improve a docker image to be more slim
 
 ## :books: Requirements
 - Have [**Git**](https://git-scm.com/) to clone the project.
@@ -48,6 +48,7 @@ obs: websocket appeared unstable, losing connection a few times running in the d
    $ docker-compose up --build
 
    # Replace on `env.json` with a valid host and database, if you want run on docker with localhost use `host.docker.internal` as host
+   # Note: If your Database not exist the software will create
    "database_destiny": {
     "host": "host.docker.internal",
     "port": "3306",

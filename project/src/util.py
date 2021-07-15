@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import MySQLdb
@@ -15,12 +16,12 @@ def get_pair_name(dict_currency, currency_id):
     return dict_currency[dict_currency['Id'] == currency_id].iloc[0]['Currency Pair']
 
 
-def upload_table(engine, data, table, table_types={}, use_index=False):
+def upload_table(engine, data, table, log_path, table_types={}, use_index=False):
     try:
         data.to_sql(table, con=engine, if_exists="append", index=use_index, dtype=table_types)
-        print("Added to the {}.".format(table))
+        create_log("Added to the {}.".format(table), log_path)
     except Exception as e:
-        print("Unexpected error:", e)
+        create_log("Unexpected error: {}.".format(e), log_path)
 
 
 def engine_create(database):
@@ -32,6 +33,23 @@ def engine_create(database):
     )
     return create_engine(url)
 
+
 def get_environment_variables(path):
     with open(path) as json_file:
         return json.load(json_file)
+
+
+def create_log(msgs, filename):
+    f = open(filename, "a")
+    f.write("{0} -- {1}\n".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), msgs))
+    f.close()
+
+
+def create_database(database, log_path):
+    db = MySQLdb.connect(host=database["host"],  # your host, usually localhost
+                         user=database["usr"],  # your username
+                         passwd=database["pwd"])  # your password
+    cur = db.cursor()
+    cur.execute("CREATE DATABASE IF NOT EXISTS {};".format(database["db"]))
+    db.commit()
+    create_log("Create DataBase {}.".format(database["db"]), log_path)
