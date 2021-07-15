@@ -7,9 +7,6 @@
   <a href="#scroll-decisões-de-projeto">Project Decisions</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#books-requisitos">Requirements</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
   <a href="#gear-instalação-de-requisitos">Instalação</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#rocket-iniciando-aplicação">Installation</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#no_entry-computer-ambiente-local">Local Environment</a>&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;
-  <a href="#computer-ambiente-de-produção">Production</a>&nbsp;&nbsp;&nbsp;
 </p>
 
 ## :page_with_curl: About
