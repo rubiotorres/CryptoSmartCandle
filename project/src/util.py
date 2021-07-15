@@ -1,9 +1,10 @@
 import json
+
+import MySQLdb
 import pandas as pd
 from sqlalchemy import create_engine
 
 
-# '/media/rubio/Backup/Códigos/CryptoSmartCandle/project/environment/currencypairids.csv'
 def get_pair_ids(df_path):
     df_currencies = pd.read_csv(df_path)
     list_ids = list(df_currencies[df_currencies['Currency Pair'].str.contains('^BTC_')]['Id'])
@@ -32,6 +33,30 @@ def engine_create(database):
     return create_engine(url)
 
 
+# create engine without database
+def engine_create_w_db(database):
+    url = "mysql://{user}:{pw}@{host}".format(
+        host=database["host"],
+        user=database["usr"],
+        pw=database["pwd"],
+    )
+    return create_engine(url)
+
+
 def get_environment_variables(path):
     with open(path) as json_file:
         return json.load(json_file)
+
+
+# Create database if not exist
+def create_database(environment_variables):
+    print("Create Database if not exist")
+    db = MySQLdb.connect(
+        host=environment_variables["database_destiny"]["host"],
+        user=environment_variables["database_destiny"]["usr"],
+        passwd=environment_variables["database_destiny"]["pwd"],
+    )
+
+    cur = db.cursor()
+    cur.execute("CREATE DATABASE IF NOT EXISTS " + environment_variables["database_destiny"]['db'])
+    db.commit()

@@ -78,9 +78,9 @@ class DataManager:
 class DataManagerWebSocket(DataManager):
     def __init__(self, environment_variables):
         super().__init__(environment_variables)
-        route = '{"command": "subscribe", "channel": 1002}'
+        self.route = '{"command": "subscribe", "channel": 1002}'
         self.web_socket = create_connection(environment_variables['web_socket_url'])
-        self.web_socket.send(route)
+        self.web_socket.send(self.route)
         while 1:
             if len(json.loads(self.web_socket.recv())) > 2:
                 break
@@ -89,14 +89,21 @@ class DataManagerWebSocket(DataManager):
         while 1:
             schedule.run_pending()
             result = json.loads(self.web_socket.recv())
+            if result[0] == 1010:
+                print('Bad Request')
+                self.web_socket = create_connection(self.environment_variables['web_socket_url'])
+                self.web_socket.send(self.route)
+                while 1:
+                    if len(json.loads(self.web_socket.recv())) > 2:
+                        break
+            else:
+                currency_id = result[2][0]
 
-            currency_id = result[2][0]
-
-            if currency_id in self.currency_list:
-                self.update_currency_candle(currency_id,
-                                            datetime.datetime.now(),
-                                            self.data_candle,
-                                            result[2][1])
+                if currency_id in self.currency_list:
+                    self.update_currency_candle(currency_id,
+                                                datetime.datetime.now(),
+                                                self.data_candle,
+                                                result[2][1])
         ws.close()
 
 
